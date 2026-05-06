@@ -2,6 +2,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcrypt';
 import File from '../models/File.js';
 import Access from '../models/Access.js';
+import jwt from 'jsonwebtoken';
 
 export const uploadFile = async (req, res) => {
   try {
@@ -43,6 +44,59 @@ export const uploadFile = async (req, res) => {
   }
 };
 
+export const verifyPassword = async (req, res) => {
+
+  try {
+
+    const { token, password } = req.body;
+
+    const access = await Access.findOne({ token });
+
+    if (!access) {
+      return res.status(404).json({
+        message: 'Invalid link'
+      });
+    }
+
+    if (!access.passwordHash) {
+      return res.status(400).json({
+        message: 'This file has no password'
+      });
+    }
+
+    const isMatch = await bcrypt.compare(
+      password,
+      access.passwordHash
+    );
+
+    if (!isMatch) {
+      return res.status(403).json({
+        message: 'Incorrect password'
+      });
+    }
+
+    //temporary access JWT
+    const accessToken = jwt.sign(
+      { token },
+      process.env.JWT_SECRET,
+      { expiresIn: '10m' }
+    );
+
+    res.json({
+      accessToken
+    });
+
+  } catch (err) {
+
+    console.log(err);
+
+    res.status(500).json({
+      message: 'Server error'
+    });
+
+  }
+
+};
 
 export const getFile = async (req, res) => {
   try {
@@ -63,16 +117,28 @@ export const getFile = async (req, res) => {
     }
 
     if (access.passwordHash) {
-      const { password } = req.query;
 
-      if (!password) {
-        return res.status(401).send("Password required");
+      const authHeader = req.headers.authorization;
+    
+      if (!authHeader) {
+        return res.status(401).send('Access token required');
       }
-
-      const isMatch = await bcrypt.compare(password, access.passwordHash);
-
-      if (!isMatch) {
-        return res.status(403).send("Incorrect password");
+    
+      const accessToken = authHeader.split(' ')[1];
+    
+      try {
+    
+        const decoded = jwt.verify(
+          accessToken,
+          process.env.JWT_SECRET
+        );
+    
+        if (decoded.token !== token) {
+          return res.status(403).send('Invalid access token');
+        }
+    
+      } catch (err) {
+        return res.status(403).send('Invalid or expired access token');
       }
     }
 
