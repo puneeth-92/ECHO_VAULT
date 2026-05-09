@@ -22,7 +22,8 @@ export const uploadFile = async (req, res) => {
 
     const fileDoc = await File.create({
       filename: file.originalname,
-      path: file.path,
+      url: file.path,
+      public_id:file.filename,
       size: file.size
     });
 
@@ -151,7 +152,7 @@ export const getFile = async (req, res) => {
     access.currentDownloads += 1;
     await access.save();
 
-    return res.download(file.path, file.filename);
+    return res.redirect(file.url);
 
   } catch (err) {
     console.log(err);

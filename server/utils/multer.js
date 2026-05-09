@@ -1,11 +1,13 @@
 import multer from 'multer';
+import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => {
-    cb(null, 'uploads/');
-  },
-  filename: (req, file, cb) => {
-    cb(null, Date.now() + '-' + file.originalname);
+import cloudinary from './cloudinary.js';
+
+const storage = new CloudinaryStorage({
+  cloudinary,
+  params: {
+    folder: 'eco_vault',
+    resource_type: 'raw'
   }
 });
 
